@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoked - Database</title>
     <link rel="canonical" href="https://getbootstrap.com/docs/5.3/examples/sidebars/" />
-    <script src="../assets/js/color-modes.js"></script>
-    <link href="../assets/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="./assets/js/color-modes.js"></script>
+    <link href="./assets/dist/css/bootstrap.min.css" rel="stylesheet" />
     <meta name="theme-color" content="#712cf9" />
     <link href="sidebars.css" rel="stylesheet" />
     <link href="modals.css" rel="stylesheet" />
@@ -122,6 +122,14 @@
 
         #add-keyword {
             transition: background-color 0.3s, color 0.3s;
+        }
+
+        .delete {
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .delete:hover {
+            color: red;
         }
     </style>
 </head>
@@ -341,7 +349,7 @@
             <div class="flex-grow-1">
                 <div id="keywords" class="list-group m-4">
 
-                    <div onclick="" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
+                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
                         style="text-align: center; cursor: pointer;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
                             class="bi bi-plus-square" viewBox="0 0 16 16">
@@ -377,8 +385,67 @@
                 </div>
             </div>
         </div>
-
-        <script src="../assets/dist/js/bootstrap.bundle.min.js" class="astro-vvvwv3sm"></script>
+        <div class="modal fade" id="add-keyword-modal" tabindex="-1" aria-hidden="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sheet">
+                <div class="modal-content rounded-4 shadow" style="padding: 5%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x"
+                        viewBox="0 0 16 16" style="position: absolute; right: 5%; top: 5%; cursor: pointer;" onclick="closeKeywordModal()">
+                        <path
+                            d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                    </svg>
+                    <form>
+                        <div class="mb-3">
+                            <label for="exampleInputEmail1" class="form-label">Keyword Name</label>
+                            <input type="text" class="form-control" id="KeywordName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="exampleInputPassword1" class="form-label">Effect</label>
+                            <input type="text" class="form-control" id="KeywordEffect">
+                        </div>
+                        <button type="submit" class="btn btn-primary" onclick="addKeyword(event)">Add</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="delete-keyword-modal" tabindex="-1" aria-hidden="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sheet">
+                <div class="modal-content rounded-4 shadow py-4 px-5 d-flex flex-column align-items-center" style="gap: 1.5rem; position: relative;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x"
+                        viewBox="0 0 16 16" style="position: absolute; right: 5%; top: 5%; cursor: pointer;" onclick="closeDeleteKeywordModal()">
+                        <path
+                            d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                    </svg>
+                    <h3 class="mb-3 mt-2 text-center">Are you sure you want to delete this keyword?</h3>
+                    <div class="d-flex gap-3 mt-2">
+                        <button type="button" class="btn btn-outline-danger" id="confirm-delete-btn">Delete</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="closeDeleteKeywordModal()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="edit-keyword-modal" tabindex="-1" aria-hidden="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sheet">
+                <div class="modal-content rounded-4 shadow" style="padding: 5%;">
+                    <svg onclick="closeEditKeywordModal()" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x"
+                        viewBox="0 0 16 16" style="position: absolute; right: 5%; top: 5%; cursor: pointer;" onclick="closeKeywordModal()">
+                        <path
+                            d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                    </svg>
+                    <form>
+                        <div class="mb-3">
+                            <label for="exampleInputEmail1" class="form-label">Keyword Name</label>
+                            <input type="text" class="form-control" id="EditKeywordName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="exampleInputPassword1" class="form-label">Effect</label>
+                            <input type="text" class="form-control" id="EditKeywordEffect">
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="edit-keyword-form" onclick="editKeyword(event)">Edit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <script src="./assets/dist/js/bootstrap.bundle.min.js" class="astro-vvvwv3sm"></script>
         <script src="sidebars.js" class="astro-vvvwv3sm"></script>
         <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -388,9 +455,9 @@
         <script src="global.js"></script>
         <script>
             firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                listKeywords();
-            }
+                if (user) {
+                    listKeywords();
+                }
             });
         </script>
 </body>

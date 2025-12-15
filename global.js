@@ -251,6 +251,15 @@ async function listFiles() {
 function listKeywords() {
   ensureFirebaseInitialized();
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+    document.getElementById("keywords").innerHTML = ` 
+                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
+                        style="text-align: center; cursor: pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
+                            class="bi bi-plus-square" viewBox="0 0 16 16">
+                            <path
+                                d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
+                        </svg>
+                    </div>`;
     const db = firebase.firestore();
     db.collection("Keywords").get().then((querySnapshot) => {
       [...querySnapshot.docs].reverse().forEach((doc) => {
@@ -312,16 +321,7 @@ function addKeyword(event) {
       .then((docRef) => {
         console.log("Keyword added with ID: ", docRef.id);
         closeKeywordModal();
-        // Optionally, refresh the keyword list
-        document.getElementById("keywords").innerHTML = ` 
-                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
-                        style="text-align: center; cursor: pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
-                            class="bi bi-plus-square" viewBox="0 0 16 16">
-                            <path
-                                d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
-                        </svg>
-                    </div>`;
+
         listKeywords();
       })
       .catch((error) => {
@@ -353,16 +353,7 @@ function deleteKeyword(keywordId) {
       .then(() => {
         console.log("Keyword successfully deleted!");
         closeDeleteKeywordModal();
-        // Optionally, refresh the keyword list
-        document.getElementById("keywords").innerHTML = ` 
-                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
-                        style="text-align: center; cursor: pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
-                            class="bi bi-plus-square" viewBox="0 0 16 16">
-                            <path
-                                d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
-                        </svg>
-                    </div>`;
+
         listKeywords();
       })
       .catch((error) => {
@@ -380,7 +371,7 @@ function closeDeleteKeywordModal() {
 }
 
 function openEditKeywordModal(keywordId) {
-  if(!EditKeywordModal) {
+  if (!EditKeywordModal) {
     EditKeywordModal = new bootstrap.Modal(document.getElementById('edit-keyword-modal'), {
       backdrop: 'static',
       keyboard: false
@@ -398,7 +389,7 @@ function openEditKeywordModal(keywordId) {
       document.getElementById("EditKeywordName").value = doc.data().Name;
       document.getElementById("EditKeywordEffect").value = doc.data().Effect;
       document.getElementById('edit-keyword-form').setAttribute('data-keyword-id', keywordId);
-        } else {
+    } else {
       console.log("No such document!");
     }
   }).catch((error) => {
@@ -423,15 +414,7 @@ function editKeyword(event) {
         console.log("Keyword updated with ID: ", keywordId);
         closeEditKeywordModal();
         // Optionally, refresh the keyword list
-        document.getElementById("keywords").innerHTML = ` 
-                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
-                        style="text-align: center; cursor: pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
-                            class="bi bi-plus-square" viewBox="0 0 16 16">
-                            <path
-                                d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
-                        </svg>
-                    </div>`;
+
         listKeywords();
       })
       .catch((error) => {

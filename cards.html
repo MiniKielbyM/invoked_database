@@ -54,7 +54,7 @@
             position: relative;
             z-index: 2;
             height: 2.75rem;
-            overflow-y: hidden;
+            overflow-y: visible;
         }
 
         .nav-scroller .nav {
@@ -141,7 +141,7 @@
     </style>
 </head>
 
-<body>
+<body style="overflow: scroll;">
     <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
         <symbol id="check2" viewBox="0 0 16 16">
             <path
@@ -328,7 +328,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="./cards.html" class="nav-link link-body-emphasis">
+                        <a href="#" class="nav-link link-body-emphasis active">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                 class="bi bi-person-badge pe-none me-2" viewBox="0 0 16 16">
                                 <path d="M6.5 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
@@ -339,7 +339,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="nav-link link-body-emphasis active">
+                        <a href="./keywords.html" class="nav-link link-body-emphasis">
 
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                 class="bi bi-key pe-none me-2" viewBox="0 0 16 16">
@@ -366,7 +366,45 @@
             </div>
             <div class="flex-grow-1">
                 <div id="keywords" class="list-group m-4">
-
+                    <div class="card-group">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="row g-0">
+                                        <div class="col-md-4">
+                                            <img src="./BlankCard.png" class="img-fluid rounded-start"
+                                                alt="Card image cap">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Card name</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="row g-0">
+                                        <div class="col-md-4">
+                                            <img src="./BlankCard.png" class="img-fluid rounded-start"
+                                                alt="Card image cap">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Card title</h5>
+                                                <p class="card-text">This is a wider card with supporting text below as
+                                                    a natural lead-in to additional content. This content is a little
+                                                    bit longer.</p>
+                                                <p class="card-text"><small class="text-body-secondary">Last updated 3
+                                                        mins ago</small></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true"
                         id="add-keyword" style="text-align: center; cursor: pointer;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
@@ -480,7 +518,7 @@
         <script>
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
-                    listKeywords();
+
                 }
             });
         </script>

@@ -20,8 +20,17 @@ function ensureFirebaseInitialized() {
   if (typeof firebase !== 'undefined') {
     if (firebase.apps && firebase.apps.length === 0) {
       firebase.initializeApp(firebaseConfig);
+      // Set Firebase Auth to persist sessions across browser sessions
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch((error) => {
+          console.error('Error setting persistence:', error);
+        });
     } else if (!firebase.apps) {
       firebase.initializeApp(firebaseConfig);
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch((error) => {
+          console.error('Error setting persistence:', error);
+        });
     }
   } else {
     console.error('Firebase SDK not loaded. Please check your script order.');
@@ -37,7 +46,7 @@ const OAUTH2_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/oauth
 
 // Authorization scopes required by the API; multiple scopes can be
 // included, separated by spaces.
-const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 let tokenClient;
 let gapiInited = false;
@@ -46,6 +55,7 @@ let authModal;
 let KeywordModal;
 let DeleteKeywordModal;
 let EditKeywordModal;
+let CardModal;
 /**
  * Save user authentication state to localStorage
  */
@@ -78,6 +88,11 @@ function clearAuthState() {
  * Check if user is currently authenticated
  */
 function isUserAuthenticated() {
+  // Check Firebase Auth state first (more reliable)
+  if (firebase.auth().currentUser) {
+    return true;
+  }
+  // Fallback to GAPI token check
   const token = gapi.client.getToken();
   return token !== null;
 }
@@ -123,25 +138,35 @@ async function initializeGapiClient() {
   });
   gapiInited = true;
 
-  // Restore saved token if available
-  const savedState = getSavedAuthState();
-  if (savedState && savedState.token) {
-    gapi.client.setToken(savedState.token);
+  // Wait for Firebase Auth to check existing session
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      console.log('User already signed in:', user.email);
 
-    // Restore Firebase Auth session if possible
-    if (savedState.token.access_token) {
-      var credential = firebase.auth.GoogleAuthProvider.credential(null, savedState.token.access_token);
-      firebase.auth().signInWithCredential(credential)
-        .then((userCredential) => {
-          console.log('Firebase Auth session restored after reload.');
-        })
-        .catch((error) => {
-          console.error('Failed to restore Firebase Auth session:', error);
-        });
+      // Restore user info display from saved state or Firebase
+      const savedState = getSavedAuthState();
+      if (savedState) {
+        document.getElementById("pfp").src = savedState.picture;
+        document.getElementById("username").textContent = savedState.name;
+
+        // Restore GAPI token if not expired (for Drive API calls)
+        const tokenAge = Date.now() - savedState.timestamp;
+        if (savedState.token && tokenAge < 3600000) {
+          gapi.client.setToken(savedState.token);
+        }
+      } else if (user.photoURL && user.displayName) {
+        // Use Firebase user info if localStorage was cleared
+        document.getElementById("pfp").src = user.photoURL;
+        document.getElementById("username").textContent = user.displayName;
+      }
+
+      updateModalVisibility();
+    } else {
+      console.log('No user signed in.');
+      clearAuthState();
+      updateModalVisibility();
     }
-  }
-
-  updateModalVisibility();
+  });
 }
 
 /**
@@ -188,7 +213,7 @@ function handleAuthClick() {
 
         // Only call Firestore after Firebase Auth sign-in is confirmed
         if (firebase.auth().currentUser) {
-          listKeywords();
+          console.log('User authenticated with Firebase. Accessing Firestore...');
         } else {
           console.warn('User not authenticated with Firebase, skipping Firestore access.');
         }
@@ -213,15 +238,23 @@ function handleAuthClick() {
  *  Sign out the user upon button click.
  */
 function handleSignoutClick() {
-  const token = gapi.client.getToken();
-  if (token !== null) {
-    google.accounts.oauth2.revoke(token.access_token, () => {
-      // Clear the token after revocation
-      gapi.client.setToken(null);
-      clearAuthState();
-      updateModalVisibility();
-    });
-  }
+  // Sign out from Firebase Auth
+  firebase.auth().signOut().then(() => {
+    console.log('User signed out from Firebase.');
+
+    // Revoke Google OAuth token
+    const token = gapi.client.getToken();
+    if (token !== null) {
+      google.accounts.oauth2.revoke(token.access_token, () => {
+        gapi.client.setToken(null);
+      });
+    }
+
+    clearAuthState();
+    updateModalVisibility();
+  }).catch((error) => {
+    console.error('Error signing out:', error);
+  });
 }
 
 /**
@@ -260,7 +293,7 @@ function listKeywords() {
                                 d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
                         </svg>
                     </div>`;
-    const db = firebase.firestore();
+    
     db.collection("Keywords").get().then((querySnapshot) => {
       [...querySnapshot.docs].reverse().forEach((doc) => {
         document.getElementById("keywords").innerHTML = `
@@ -313,7 +346,7 @@ function addKeyword(event) {
   const keywordEffect = document.getElementById("KeywordEffect").value;
 
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    const db = firebase.firestore();
+    
     db.collection("Keywords").add({
       Name: keywordName,
       Effect: keywordEffect
@@ -348,7 +381,7 @@ function openDeleteKeywordModal(keywordId) {
 function deleteKeyword(keywordId) {
   ensureFirebaseInitialized();
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    const db = firebase.firestore();
+    
     db.collection("Keywords").doc(keywordId).delete()
       .then(() => {
         console.log("Keyword successfully deleted!");
@@ -383,7 +416,7 @@ function openEditKeywordModal(keywordId) {
   const newForm = editForm.cloneNode(true);
   editForm.parentNode.replaceChild(newForm, editForm);
   // Fetch and populate the keyword data into the edit modal
-  const db = firebase.firestore();
+  
   db.collection("Keywords").doc(keywordId).get().then((doc) => {
     if (doc.exists) {
       document.getElementById("EditKeywordName").value = doc.data().Name;
@@ -405,7 +438,7 @@ function editKeyword(event) {
   const updatedEffect = document.getElementById("EditKeywordEffect").value;
 
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    const db = firebase.firestore();
+    
     db.collection("Keywords").doc(keywordId).update({
       Name: updatedName,
       Effect: updatedEffect
@@ -429,4 +462,191 @@ function closeEditKeywordModal() {
   if (EditKeywordModal) {
     EditKeywordModal.hide();
   }
+}
+
+async function addCard(event) {
+  event.preventDefault();
+  document.getElementById("submitNewCard").disabled = true;
+  document.getElementById("submitNewCard").classList.add("btn-secondary");
+  if (!document.getElementById("add-card-form").checkValidity()) {
+    document.getElementById("add-card-form").reportValidity();
+    console.log("Form invalid");
+    document.getElementById("submitNewCard").classList.remove("btn-secondary");
+    document.getElementById("submitNewCard").disabled = false;
+    return;
+  }
+  console.log(document.getElementById("add-card-form").checkValidity());
+  // Check if user is authenticated
+  if (!isUserAuthenticated()) {
+    alert('You must be signed in to add a card.');
+    document.getElementById("submitNewCard").classList.remove("btn-secondary");
+
+    document.getElementById("submitNewCard").disabled = false;
+    return;
+  }
+
+  const fileInput = document.getElementById('CardImage');
+  const file = fileInput.files[0];
+  if (!file) {
+    
+    db.collection("Cards").add({
+      Name: document.getElementById("CardName").value,
+      Effect: document.getElementById("CardEffect").value,
+      ImageFileID: null,
+      Type: document.getElementById("CardType").value,
+      Roles: Array.from(document.getElementById('card-fields-list').children).map(element => element.children[2].value),
+      ChipCost: document.getElementById("CardChipCost").value,
+      BurnCost: document.getElementById("CardBurnCost").value,
+      SacrificeCost: document.getElementById("CardSacrificeCost").value,
+      Defence: document.getElementById("CardDefence").value,
+      Attack: document.getElementById("CardAttack").value
+    })
+      .then((docRef) => {
+        console.log("Card added with ID: ", docRef.id);
+        document.getElementById("submitNewCard").classList.remove("btn-secondary");
+        document.getElementById("submitNewCard").disabled = false;
+        resetAddCardForm();
+      })
+      .catch((error) => {
+        document.getElementById("submitNewCard").disabled = false;
+        console.error("Error adding card: ", error);
+      });
+    return;
+  }
+
+  try {
+    // Replace 'YOUR_FOLDER_ID' with the actual folder ID where you want to upload the file
+    const folderId = '1GACgBU0no9gT-yc4yZXm-UqAcjSeqX-Y';
+    let fileID = null;
+    // Create metadata
+    const metadata = {
+      name: file.name,
+      mimeType: file.type,
+      parents: [folderId]
+    };
+
+    // Create form data for multipart upload
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+
+    // Get the access token
+    const token = getSavedAuthState().token;
+    if (!token || !token.access_token) {
+      alert('Authentication token is missing. Please sign in again.');
+      document.getElementById("submitNewCard").classList.remove("btn-secondary");
+      document.getElementById("submitNewCard").disabled = false;
+      return;
+    }
+
+    // Upload using fetch API with multipart/related
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`
+      },
+      body: form
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('File uploaded successfully:', result.webViewLink);
+      fileID = result.id;
+      const db = firebase.firestore();
+      db.collection("Cards").add({
+        Name: document.getElementById("CardName").value,
+        Effect: document.getElementById("CardEffect").value,
+        ImageFileID: fileID,
+        Type: document.getElementById("CardType").value,
+        Roles: Array.from(document.getElementById('card-fields-list').children).map(element => element.children[2].value),
+        ChipCost: document.getElementById("CardChipCost").value,
+        BurnCost: document.getElementById("CardBurnCost").value,
+        SacrificeCost: document.getElementById("CardSacrificeCost").value,
+        Defence: document.getElementById("CardDefence").value,
+        Attack: document.getElementById("CardAttack").value
+      })
+        .then((docRef) => {
+          console.log("Card added with ID: ", docRef.id);
+          document.getElementById("submitNewCard").classList.remove("btn-secondary");
+          document.getElementById("submitNewCard").disabled = false;
+          resetAddCardForm();
+        })
+        .catch((error) => {
+          document.getElementById("submitNewCard").disabled = false;
+          console.error("Error adding card: ", error);
+        });
+    } else {
+      const error = await response.json();
+      console.error('Upload failed:', error);
+      document.getElementById("submitNewCard").classList.remove("btn-secondary");
+      document.getElementById("submitNewCard").disabled = false;
+    }
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    document.getElementById("submitNewCard").classList.remove("btn-secondary");
+    document.getElementById("submitNewCard").disabled = false;
+  }
+
+}
+
+function resetAddCardForm() {
+  listCards();
+  document.getElementById("add-card-form").reset();
+  document.getElementById("card-fields-list").innerHTML = "";
+}
+
+function openCardModal() {
+  if (!CardModal) {
+    CardModal = new bootstrap.Modal(document.getElementById('add-card-modal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+  }
+  CardModal.show();
+}
+
+function closeCardModal() {
+  if (CardModal) {
+    resetAddCardForm();
+    CardModal.hide();
+  }
+}
+
+function listCards() {
+  const db = firebase.firestore();
+  db.collection("Cards").get().then((querySnapshot) => {
+    querySnapshot.forEach((doc) => {
+      document.getElementById("cards-container").innerHTML += `
+      <div class="col-12 col-md-6 col-lg-4">
+                            <div class="card h-100">
+                                <img src="./BlankCard.png" class="card-img-top playing-card-ratio" alt="Card image cap">
+                                <div class="card-body">
+                                    <h5 class="card-title">${doc.data().Name}</h5>
+                                    <dl>
+                                        <dt>Card type</dt>
+                                        <dd>${doc.data().CardType}</dd>
+                                        <dt>Roles</dt>
+                                        <dd>${doc.data().Roles.join(', ')}</dd>
+                                        <dt>Chips cost</dt>
+                                        <dd>${doc.data().ChipCost}</dd>
+                                        <dt>Burn cost</dt>
+                                        <dd>${doc.data().BurnCost}</dd>
+                                        <dt>Sacrifice cost</dt>
+                                        <dd>${doc.data().SacrificeCost}</dd>
+                                        <dt>Defence</dt>
+                                        <dd>${doc.data().Defence}</dd>
+                                        <dt>Attack</dt>
+                                        <dd>${doc.data().Attack}</dd>
+                                        <dt>Effect</dt>
+                                        <dd>${doc.data().Effect}</dd>
+                                    </dl>
+
+                                    <p class="card-text"><small class="text-body-secondary">ID:
+                                            ${doc.id}</small></p>
+                                </div>
+                            </div>
+                        </div>
+      `
+    });
+  });
 }

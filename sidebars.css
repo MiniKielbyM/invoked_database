@@ -1,3 +1,12 @@
+/* Maintain 2.5:3.5 aspect ratio for card images */
+.card-img-top.playing-card-ratio {
+  aspect-ratio: 2.5 / 3.5;
+  width: 100%;
+  object-fit: cover;
+  background: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 body {
   min-height: 100vh;
   min-height: -webkit-fill-available;

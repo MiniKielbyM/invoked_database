@@ -138,6 +138,28 @@
             color: #0d6efd;
             transition: color 0.3s;
         }
+
+        .number-spinners {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .number-spinners button {
+            all: unset;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 1;
+            padding: 2px 6px;
+            user-select: none;
+        }
+
+        .number-spinners button:active {
+            background: #e9ecef;
+        }
     </style>
 </head>
 
@@ -286,7 +308,8 @@
     </div>
     <main>
         <div class="d-flex">
-            <div class="d-flex flex-column flex-shrink-0 p-3 bg-body-tertiary" style="width: 280px; height: 100vh; position: sticky; top: 0;">
+            <div class="d-flex flex-column flex-shrink-0 p-3 bg-body-tertiary"
+                style="width: 280px; height: 100vh; position: sticky; top: 0;">
                 <a href="./"
                     class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-body-emphasis text-decoration-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
@@ -365,53 +388,15 @@
                 </div>
             </div>
             <div class="flex-grow-1">
-                <div id="keywords" class="list-group m-4">
-                    <div class="card-group">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="card h-100">
-                                    <div class="row g-0">
-                                        <div class="col-md-4">
-                                            <img src="./BlankCard.png" class="img-fluid rounded-start"
-                                                alt="Card image cap">
-                                        </div>
-                                        <div class="col-md-8">
-                                            <div class="card-body">
-                                                <h5 class="card-title">Card name</h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card h-100">
-                                    <div class="row g-0">
-                                        <div class="col-md-4">
-                                            <img src="./BlankCard.png" class="img-fluid rounded-start"
-                                                alt="Card image cap">
-                                        </div>
-                                        <div class="col-md-8">
-                                            <div class="card-body">
-                                                <h5 class="card-title">Card title</h5>
-                                                <p class="card-text">This is a wider card with supporting text below as
-                                                    a natural lead-in to additional content. This content is a little
-                                                    bit longer.</p>
-                                                <p class="card-text"><small class="text-body-secondary">Last updated 3
-                                                        mins ago</small></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="container py-4">
+                    <div class="row g-40">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2>Cards</h2>
+                            <button class="btn btn-primary" onclick="openCardModal()">Add New Card</button>
                         </div>
                     </div>
-                    <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true"
-                        id="add-keyword" style="text-align: center; cursor: pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
-                            class="bi bi-plus-square" viewBox="0 0 16 16">
-                            <path
-                                d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
-                        </svg>
+                    <div id="cards-container" class="row row-cols-1 row-cols-md-3 g-4">
+                        <!-- Cards will be dynamically added here -->
                     </div>
                 </div>
             </div>
@@ -441,25 +426,405 @@
                 </div>
             </div>
         </div>
-        <div class="modal fade" id="add-keyword-modal" tabindex="-1" aria-hidden="true" role="dialog">
+        <div class="modal fade" id="add-card-modal" tabindex="-1" aria-hidden="true" role="dialog">
             <div class="modal-dialog modal-dialog-centered modal-sheet">
                 <div class="modal-content rounded-4 shadow" style="padding: 5%;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x"
-                        viewBox="0 0 16 16" style="position: absolute; right: 5%; top: 5%; cursor: pointer;"
-                        onclick="closeKeywordModal()">
-                        <path
-                            d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
-                    </svg>
-                    <form>
+                    <form id="add-card-form">
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">Keyword Name</label>
-                            <input type="text" class="form-control" id="KeywordName">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+                                class="bi bi-x" viewBox="0 0 16 16"
+                                style="position: absolute; float: right; cursor: pointer; right: 5%; top: 1.5%;"
+                                onclick="closeCardModal()">
+                                <path
+                                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                            </svg>
+                            <label for="CardName" class="form-label">Card Name</label>
+                            <input type="text" class="form-control" id="CardName" required>
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputPassword1" class="form-label">Effect</label>
-                            <input type="text" class="form-control" id="KeywordEffect">
+                            <label for="CardType" class="form-label">Card Type</label>
+                            <select class="form-select" id="CardType" aria-label="Card Type" required>
+                                <option value="Conscript">Conscript</option>
+                                <option value="Joker">Joker</option>
+                                <option value="Strategy">Strategy</option>
+                                <option value="Building">Building</option>
+                                <option value="Action">Action</option>
+                            </select>
                         </div>
-                        <button type="submit" class="btn btn-primary" onclick="addKeyword(event)">Add</button>
+                        <div class="mb-3">
+                            <label for="CardFields" class="form-label">Roles</label>
+                            <ul id="card-fields-list" class="list-group mb-2">
+                                <!-- Dynamic Keywords will be added here -->
+                            </ul>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="new-field-name" placeholder="Role"
+                                    maxlength="20">
+                                <button type="button" class="btn btn-outline-primary" id="add-field-btn">Add
+                                    Role</button>
+                            </div>
+                            <script>
+                                const fieldsList = document.getElementById('card-fields-list');
+                                const addFieldBtn = document.getElementById('add-field-btn');
+                                const newFieldName = document.getElementById('new-field-name');
+
+                                addFieldBtn.onclick = function () {
+                                    const name = newFieldName.value.trim();
+                                    if (!name) return;
+                                    const li = document.createElement('li');
+                                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                                    li.innerHTML = `
+                                        <span><strong>${name}</strong></span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">Remove</button>
+                                        <input type="hidden" name="fields[]" value="${encodeURIComponent(name)}">
+                                    `;
+                                    fieldsList.appendChild(li);
+                                    newFieldName.value = '';
+                                };
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardChipCost" class="form-label">Chips Cost</label>
+
+                            <div class="position-relative">
+                                <input type="text" class="form-control pe-5" id="CardChipCost" inputmode="decimal"
+                                    autocomplete="off" required pattern="x|-?\d+" />
+                                <div class="number-spinners">
+                                    <button type="button" data-dir="up">▲</button>
+                                    <button type="button" data-dir="down">▼</button>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const input = document.getElementById("CardChipCost");
+                                    const spinner = input.parentElement.querySelector('.number-spinners');
+                                    const MIN = -1;
+                                    const MAX = 9999;
+                                    const STEP = 1;
+
+                                    function isX(v) { return v === "x"; }
+                                    function toNumber(v) { return isX(v) ? -1 : Number(v); }
+                                    function fromNumber(n) { return n === -1 ? "x" : String(n); }
+                                    function clamp(n) { return Math.min(MAX, Math.max(MIN, n)); }
+                                    function valid(v) { return v === "x" || /^-?\d+(\.\d+)?$/.test(v); }
+                                    function setVal(n) { input.value = fromNumber(clamp(n)); }
+
+                                    input.addEventListener("input", () => {
+                                        const v = input.value.toLowerCase();
+                                        if (!valid(v)) {
+                                            input.value = v.slice(0, -1);
+                                        } else {
+                                            input.value = v;
+                                        }
+                                    });
+
+                                    input.addEventListener("blur", () => {
+                                        if (input.value === "") {
+                                            input.value = "x";
+                                            return;
+                                        }
+                                        setVal(toNumber(input.value));
+                                    });
+
+                                    input.addEventListener("keydown", e => {
+                                        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.key === "ArrowUp" ? STEP : -STEP));
+                                    });
+
+                                    input.addEventListener("wheel", e => {
+                                        if (document.activeElement !== input) return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.deltaY < 0 ? STEP : -STEP));
+                                    });
+
+                                    spinner.querySelectorAll("button").forEach(b => {
+                                        b.addEventListener("click", () => {
+                                            const n = toNumber(input.value || "x");
+                                            setVal(n + (b.dataset.dir === "up" ? STEP : -STEP));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardBurnCost" class="form-label">Burn Cost</label>
+
+                            <div class="position-relative">
+                                <input type="text" class="form-control pe-5" id="CardBurnCost" inputmode="decimal"
+                                    autocomplete="off" required pattern="x|-?\d+" />
+                                <div class="number-spinners">
+                                    <button type="button" data-dir="up">▲</button>
+                                    <button type="button" data-dir="down">▼</button>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const input = document.getElementById("CardBurnCost");
+                                    const spinner = input.parentElement.querySelector('.number-spinners');
+                                    const MIN = -1;
+                                    const MAX = 9999;
+                                    const STEP = 1;
+
+                                    function isX(v) { return v === "x"; }
+                                    function toNumber(v) { return isX(v) ? -1 : Number(v); }
+                                    function fromNumber(n) { return n === -1 ? "x" : String(n); }
+                                    function clamp(n) { return Math.min(MAX, Math.max(MIN, n)); }
+                                    function valid(v) { return v === "x" || /^-?\d+(\.\d+)?$/.test(v); }
+                                    function setVal(n) { input.value = fromNumber(clamp(n)); }
+
+                                    input.addEventListener("input", () => {
+                                        const v = input.value.toLowerCase();
+                                        if (!valid(v)) {
+                                            input.value = v.slice(0, -1);
+                                        } else {
+                                            input.value = v;
+                                        }
+                                    });
+
+                                    input.addEventListener("blur", () => {
+                                        if (input.value === "") {
+                                            input.value = "x";
+                                            return;
+                                        }
+                                        setVal(toNumber(input.value));
+                                    });
+
+                                    input.addEventListener("keydown", e => {
+                                        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.key === "ArrowUp" ? STEP : -STEP));
+                                    });
+
+                                    input.addEventListener("wheel", e => {
+                                        if (document.activeElement !== input) return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.deltaY < 0 ? STEP : -STEP));
+                                    });
+
+                                    spinner.querySelectorAll("button").forEach(b => {
+                                        b.addEventListener("click", () => {
+                                            const n = toNumber(input.value || "x");
+                                            setVal(n + (b.dataset.dir === "up" ? STEP : -STEP));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardSacrificeCost" class="form-label">Sacrifice Cost</label>
+
+                            <div class="position-relative">
+                                <input type="text" class="form-control pe-5" id="CardSacrificeCost" inputmode="decimal"
+                                    autocomplete="off" required pattern="x|-?\d+" />
+                                <div class="number-spinners">
+                                    <button type="button" data-dir="up">▲</button>
+                                    <button type="button" data-dir="down">▼</button>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const input = document.getElementById("CardSacrificeCost");
+                                    const spinner = input.parentElement.querySelector('.number-spinners');
+                                    const MIN = -1;
+                                    const MAX = 9999;
+                                    const STEP = 1;
+
+                                    function isX(v) { return v === "x"; }
+                                    function toNumber(v) { return isX(v) ? -1 : Number(v); }
+                                    function fromNumber(n) { return n === -1 ? "x" : String(n); }
+                                    function clamp(n) { return Math.min(MAX, Math.max(MIN, n)); }
+                                    function valid(v) { return v === "x" || /^-?\d+(\.\d+)?$/.test(v); }
+                                    function setVal(n) { input.value = fromNumber(clamp(n)); }
+
+                                    input.addEventListener("input", () => {
+                                        const v = input.value.toLowerCase();
+                                        if (!valid(v)) {
+                                            input.value = v.slice(0, -1);
+                                        } else {
+                                            input.value = v;
+                                        }
+                                    });
+
+                                    input.addEventListener("blur", () => {
+                                        if (input.value === "") {
+                                            input.value = "x";
+                                            return;
+                                        }
+                                        setVal(toNumber(input.value));
+                                    });
+
+                                    input.addEventListener("keydown", e => {
+                                        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.key === "ArrowUp" ? STEP : -STEP));
+                                    });
+
+                                    input.addEventListener("wheel", e => {
+                                        if (document.activeElement !== input) return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.deltaY < 0 ? STEP : -STEP));
+                                    });
+
+                                    spinner.querySelectorAll("button").forEach(b => {
+                                        b.addEventListener("click", () => {
+                                            const n = toNumber(input.value || "x");
+                                            setVal(n + (b.dataset.dir === "up" ? STEP : -STEP));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardDefence" class="form-label">Defence</label>
+
+                            <div class="position-relative">
+                                <input type="text" class="form-control pe-5" id="CardDefence" inputmode="decimal"
+                                    autocomplete="off" required pattern="x|-?\d+" />
+                                <div class="number-spinners">
+                                    <button type="button" data-dir="up">▲</button>
+                                    <button type="button" data-dir="down">▼</button>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const input = document.getElementById("CardDefence");
+                                    const spinner = input.parentElement.querySelector('.number-spinners');
+                                    const MIN = -1;
+                                    const MAX = 9999;
+                                    const STEP = 1;
+
+                                    function isX(v) { return v === "x"; }
+                                    function toNumber(v) { return isX(v) ? -1 : Number(v); }
+                                    function fromNumber(n) { return n === -1 ? "x" : String(n); }
+                                    function clamp(n) { return Math.min(MAX, Math.max(MIN, n)); }
+                                    function valid(v) { return v === "x" || /^-?\d+(\.\d+)?$/.test(v); }
+                                    function setVal(n) { input.value = fromNumber(clamp(n)); }
+
+                                    input.addEventListener("input", () => {
+                                        const v = input.value.toLowerCase();
+                                        if (!valid(v)) {
+                                            input.value = v.slice(0, -1);
+                                        } else {
+                                            input.value = v;
+                                        }
+                                    });
+
+                                    input.addEventListener("blur", () => {
+                                        if (input.value === "") {
+                                            input.value = "x";
+                                            return;
+                                        }
+                                        setVal(toNumber(input.value));
+                                    });
+
+                                    input.addEventListener("keydown", e => {
+                                        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.key === "ArrowUp" ? STEP : -STEP));
+                                    });
+
+                                    input.addEventListener("wheel", e => {
+                                        if (document.activeElement !== input) return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.deltaY < 0 ? STEP : -STEP));
+                                    });
+
+                                    spinner.querySelectorAll("button").forEach(b => {
+                                        b.addEventListener("click", () => {
+                                            const n = toNumber(input.value || "x");
+                                            setVal(n + (b.dataset.dir === "up" ? STEP : -STEP));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardAttack" class="form-label">Attack</label>
+
+                            <div class="position-relative">
+                                <input type="text" class="form-control pe-5" id="CardAttack" inputmode="decimal"
+                                    autocomplete="off" required pattern="x|-?\d+" />
+                                <div class="number-spinners">
+                                    <button type="button" data-dir="up">▲</button>
+                                    <button type="button" data-dir="down">▼</button>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const input = document.getElementById("CardAttack");
+                                    const spinner = input.parentElement.querySelector('.number-spinners');
+                                    const MIN = -1;
+                                    const MAX = 9999;
+                                    const STEP = 1;
+
+                                    function isX(v) { return v === "x"; }
+                                    function toNumber(v) { return isX(v) ? -1 : Number(v); }
+                                    function fromNumber(n) { return n === -1 ? "x" : String(n); }
+                                    function clamp(n) { return Math.min(MAX, Math.max(MIN, n)); }
+                                    function valid(v) { return v === "x" || /^-?\d+(\.\d+)?$/.test(v); }
+                                    function setVal(n) { input.value = fromNumber(clamp(n)); }
+
+                                    input.addEventListener("input", () => {
+                                        const v = input.value.toLowerCase();
+                                        if (!valid(v)) {
+                                            input.value = v.slice(0, -1);
+                                        } else {
+                                            input.value = v;
+                                        }
+                                    });
+
+                                    input.addEventListener("blur", () => {
+                                        if (input.value === "") {
+                                            input.value = "x";
+                                            return;
+                                        }
+                                        setVal(toNumber(input.value));
+                                    });
+
+                                    input.addEventListener("keydown", e => {
+                                        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.key === "ArrowUp" ? STEP : -STEP));
+                                    });
+
+                                    input.addEventListener("wheel", e => {
+                                        if (document.activeElement !== input) return;
+                                        e.preventDefault();
+                                        const n = toNumber(input.value || "x");
+                                        setVal(n + (e.deltaY < 0 ? STEP : -STEP));
+                                    });
+
+                                    spinner.querySelectorAll("button").forEach(b => {
+                                        b.addEventListener("click", () => {
+                                            const n = toNumber(input.value || "x");
+                                            setVal(n + (b.dataset.dir === "up" ? STEP : -STEP));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        </div>
+                        <div class="mb-3">
+                            <label for="CardEffect" class="form-label">Effect</label>
+                            <textarea class="form-control" id="CardEffect" rows="7" required></textarea>
+                        </div>
+                        <div>
+                            <label for="CardImage" class="form-label">Card Image</label>
+                            <input class="form-control" type="file" id="CardImage" accept="image/*">
+                        </div>
+                        <div class="mb-3">
+                            <br />
+                            <button type="submit" class="btn btn-primary " id="submitNewCard"
+                                onclick="addCard(event)">Add</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -474,7 +839,7 @@
                         <path
                             d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
                     </svg>
-                    <h3 class="mb-3 mt-2 text-center">Are you sure you want to delete this keyword?</h3>
+                    <h3 class="mb-3 mt-2 text-center">Are you sure you want to delete this card?</h3>
                     <div class="d-flex gap-3 mt-2">
                         <button type="button" class="btn btn-outline-danger" id="confirm-delete-btn">Delete</button>
                         <button type="button" class="btn btn-outline-secondary"
@@ -518,9 +883,10 @@
         <script>
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
-
+                    listCards();
                 }
             });
+
         </script>
 </body>
 

@@ -51,21 +51,36 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
+let tokenExpiryTimeoutId = null;
 let authModal;
 let KeywordModal;
 let DeleteKeywordModal;
 let EditKeywordModal;
 let CardModal;
+let DeleteCardModal;
+const db = firebase.firestore();
 /**
  * Save user authentication state to localStorage
  */
-function saveAuthState(userInfo, token) {
+function saveAuthState(userInfo, token, expiresInSeconds) {
+  const now = Date.now();
+  let expiresAt = null;
+  if (typeof expiresInSeconds === 'number' && !isNaN(expiresInSeconds)) {
+    expiresAt = now + expiresInSeconds * 1000;
+  } else if (token && typeof token.expires_in === 'number') {
+    expiresAt = now + token.expires_in * 1000;
+  } else {
+    // Fallback to 1 hour if not provided by GIS
+    expiresAt = now + 3600000;
+  }
+
   localStorage.setItem('userAuthState', JSON.stringify({
     name: userInfo.name,
     picture: userInfo.picture,
     email: userInfo.email,
     token: token,
-    timestamp: Date.now()
+    timestamp: now,
+    expiresAt: expiresAt
   }));
 }
 
@@ -82,6 +97,45 @@ function getSavedAuthState() {
  */
 function clearAuthState() {
   localStorage.removeItem('userAuthState');
+}
+
+function getTokenExpiresAt() {
+  const saved = getSavedAuthState();
+  if (!saved) return null;
+  if (typeof saved.expiresAt === 'number') return saved.expiresAt;
+  if (typeof saved.timestamp === 'number') return saved.timestamp + 3600000;
+  return null;
+}
+
+function onTokenExpired() {
+  console.log('Detected expired Google token; signing out to sync Firebase.');
+  // Avoid multiple triggers
+  if (tokenExpiryTimeoutId) {
+    clearTimeout(tokenExpiryTimeoutId);
+    tokenExpiryTimeoutId = null;
+  }
+  if (firebase && firebase.auth && firebase.auth().currentUser) {
+    handleSignoutClick();
+  } else {
+    clearAuthState();
+    updateModalVisibility();
+  }
+}
+
+function scheduleTokenExpiryCheck() {
+  const expiresAt = getTokenExpiresAt();
+  if (!expiresAt) return;
+  const msRemaining = expiresAt - Date.now();
+  if (tokenExpiryTimeoutId) {
+    clearTimeout(tokenExpiryTimeoutId);
+    tokenExpiryTimeoutId = null;
+  }
+  if (msRemaining <= 0) {
+    onTokenExpired();
+    return;
+  }
+  // Small buffer to ensure the token is considered expired server-side
+  tokenExpiryTimeoutId = setTimeout(onTokenExpired, msRemaining + 1000);
 }
 
 /**
@@ -160,6 +214,17 @@ async function initializeGapiClient() {
         document.getElementById("username").textContent = user.displayName;
       }
 
+      // If saved Google token is already expired, sign out of Firebase to match
+      const expiresAt = getTokenExpiresAt();
+      if (expiresAt && Date.now() >= expiresAt) {
+        console.log('Saved Google token expired on load; signing out.');
+        handleSignoutClick();
+        return;
+      }
+
+      // Schedule auto sign-out when the token expires
+      scheduleTokenExpiryCheck();
+
       updateModalVisibility();
     } else {
       console.log('No user signed in.');
@@ -204,7 +269,10 @@ function handleAuthClick() {
         const token = gapi.client.getToken();
 
         // Save user state to localStorage
-        saveAuthState(userDetails, token);
+        saveAuthState(userDetails, token, resp.expires_in);
+
+        // Schedule sign-out when token expires
+        scheduleTokenExpiryCheck();
 
         document.getElementById("pfp").src = userDetails.picture;
         document.getElementById("username").textContent = userDetails.name;
@@ -238,6 +306,11 @@ function handleAuthClick() {
  *  Sign out the user upon button click.
  */
 function handleSignoutClick() {
+  // Clear any pending expiry timer
+  if (tokenExpiryTimeoutId) {
+    clearTimeout(tokenExpiryTimeoutId);
+    tokenExpiryTimeoutId = null;
+  }
   // Sign out from Firebase Auth
   firebase.auth().signOut().then(() => {
     console.log('User signed out from Firebase.');
@@ -268,6 +341,12 @@ async function listFiles() {
       'fields': 'files(id, name)',
     });
   } catch (err) {
+    try {
+      const status = err?.status || err?.result?.error?.code;
+      if (status === 401 || status === 403) {
+        onTokenExpired();
+      }
+    } catch (e) { /* noop */ }
     return;
   }
   const files = response.result.files;
@@ -284,6 +363,7 @@ async function listFiles() {
 function listKeywords() {
   ensureFirebaseInitialized();
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+    
     document.getElementById("keywords").innerHTML = ` 
                     <div onclick="openKeywordModal()" class="list-group-item list-group-item" aria-current="true" id="add-keyword"
                         style="text-align: center; cursor: pointer;">
@@ -293,7 +373,7 @@ function listKeywords() {
                                 d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
                         </svg>
                     </div>`;
-    
+
     db.collection("Keywords").get().then((querySnapshot) => {
       [...querySnapshot.docs].reverse().forEach((doc) => {
         document.getElementById("keywords").innerHTML = `
@@ -346,7 +426,7 @@ function addKeyword(event) {
   const keywordEffect = document.getElementById("KeywordEffect").value;
 
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    
+
     db.collection("Keywords").add({
       Name: keywordName,
       Effect: keywordEffect
@@ -381,7 +461,7 @@ function openDeleteKeywordModal(keywordId) {
 function deleteKeyword(keywordId) {
   ensureFirebaseInitialized();
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    
+
     db.collection("Keywords").doc(keywordId).delete()
       .then(() => {
         console.log("Keyword successfully deleted!");
@@ -416,7 +496,7 @@ function openEditKeywordModal(keywordId) {
   const newForm = editForm.cloneNode(true);
   editForm.parentNode.replaceChild(newForm, editForm);
   // Fetch and populate the keyword data into the edit modal
-  
+
   db.collection("Keywords").doc(keywordId).get().then((doc) => {
     if (doc.exists) {
       document.getElementById("EditKeywordName").value = doc.data().Name;
@@ -438,7 +518,7 @@ function editKeyword(event) {
   const updatedEffect = document.getElementById("EditKeywordEffect").value;
 
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    
+
     db.collection("Keywords").doc(keywordId).update({
       Name: updatedName,
       Effect: updatedEffect
@@ -466,6 +546,7 @@ function closeEditKeywordModal() {
 
 async function addCard(event) {
   event.preventDefault();
+  
   document.getElementById("submitNewCard").disabled = true;
   document.getElementById("submitNewCard").classList.add("btn-secondary");
   if (!document.getElementById("add-card-form").checkValidity()) {
@@ -488,7 +569,7 @@ async function addCard(event) {
   const fileInput = document.getElementById('CardImage');
   const file = fileInput.files[0];
   if (!file) {
-    
+
     db.collection("Cards").add({
       Name: document.getElementById("CardName").value,
       Effect: document.getElementById("CardEffect").value,
@@ -511,11 +592,11 @@ async function addCard(event) {
         document.getElementById("submitNewCard").disabled = false;
         console.error("Error adding card: ", error);
       });
+    closeCardModal();
     return;
   }
 
   try {
-    // Replace 'YOUR_FOLDER_ID' with the actual folder ID where you want to upload the file
     const folderId = '1GACgBU0no9gT-yc4yZXm-UqAcjSeqX-Y';
     let fileID = null;
     // Create metadata
@@ -552,7 +633,7 @@ async function addCard(event) {
       const result = await response.json();
       console.log('File uploaded successfully:', result.webViewLink);
       fileID = result.id;
-      const db = firebase.firestore();
+      
       db.collection("Cards").add({
         Name: document.getElementById("CardName").value,
         Effect: document.getElementById("CardEffect").value,
@@ -613,18 +694,24 @@ function closeCardModal() {
 }
 
 function listCards() {
-  const db = firebase.firestore();
+  document.getElementById("cards-container").innerHTML = "";
+  
+
   db.collection("Cards").get().then((querySnapshot) => {
     querySnapshot.forEach((doc) => {
+      let link = "./BlankCard.png";
+      if (doc.data().ImageFileID != null) {
+        link = `https://drive.google.com/thumbnail?id=${doc.data().ImageFileID}&sz=w750-h1050`;
+      }
       document.getElementById("cards-container").innerHTML += `
       <div class="col-12 col-md-6 col-lg-4">
                             <div class="card h-100">
-                                <img src="./BlankCard.png" class="card-img-top playing-card-ratio" alt="Card image cap">
+                                <img src="${link}" class="card-img-top playing-card-ratio" alt="Card image cap">
                                 <div class="card-body">
                                     <h5 class="card-title">${doc.data().Name}</h5>
                                     <dl>
                                         <dt>Card type</dt>
-                                        <dd>${doc.data().CardType}</dd>
+                                        <dd>${doc.data().Type}</dd>
                                         <dt>Roles</dt>
                                         <dd>${doc.data().Roles.join(', ')}</dd>
                                         <dt>Chips cost</dt>
@@ -641,12 +728,56 @@ function listCards() {
                                         <dd>${doc.data().Effect}</dd>
                                     </dl>
 
-                                    <p class="card-text"><small class="text-body-secondary">ID:
-                                            ${doc.id}</small></p>
+                                    <p class="card-text">
+                                      <small class="text-body-secondary">ID: ${doc.id}</small> 
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="delete" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16" style="float: right; cursor: pointer; margin-top: 4px;" onclick='openDeleteCardModal(${JSON.stringify(doc.id)})'>
+                                        <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                                      </svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="edit" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16" style="float: right; cursor: pointer; margin-right: 16px; margin-top: 4px;" onclick='openEditCardModal(${JSON.stringify(doc.id)})'>
+                                        <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z"/>
+                                      </svg>
+                                    </p>
                                 </div>
                             </div>
                         </div>
       `
     });
   });
+}
+function openDeleteCardModal(cardId) {
+  ensureFirebaseInitialized();
+  if (!DeleteCardModal) {
+    DeleteCardModal = new bootstrap.Modal(document.getElementById('delete-card-modal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+  }
+  DeleteCardModal.show();
+  document.getElementById('delete-card-modal').addEventListener('shown.bs.modal', function () {
+    document.getElementById('confirm-delete-btn').onclick = () => deleteCard(cardId);
+  });
+}
+function deleteCard(cardId) {
+  ensureFirebaseInitialized();
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+
+    db.collection("Cards").doc(cardId).delete()
+      .then(() => {
+        console.log("Card successfully deleted!");
+        closeDeleteCardModal();
+
+        listCards();
+      })
+      .catch((error) => {
+        console.error("Error removing card: ", error);
+      });
+  } else {
+    console.error('Cannot delete card: Firebase is not initialized.');
+  }
+}
+
+function closeDeleteCardModal() {
+  if (DeleteCardModal) {
+    DeleteCardModal.hide();
+  }
 }
